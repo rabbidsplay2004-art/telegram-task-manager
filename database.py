@@ -8,26 +8,39 @@ CREATE TABLE IF NOT EXISTS tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
     title TEXT,
-    status TEXT
+    status TEXT,
+    assignee_id INTEGER
 )
 """)
 
 conn.commit()
 
 
-def add_task(user_id, title):
+def add_task(user_id, title, assignee_id):
 
     cursor.execute(
-        "INSERT INTO tasks (user_id, title, status) VALUES (?, ?, ?)",
-        (user_id, title, "🆕")
+        """
+        INSERT INTO tasks (
+            user_id,
+            title,
+            status,
+            assignee_id
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            user_id,
+            title,
+            "🆕",
+            assignee_id
+        )
     )
 
     conn.commit()
 
-
 def get_tasks(user_id):
     cursor.execute(
-        "SELECT id, title, status FROM tasks WHERE user_id = ?",
+        "SELECT id, title, status, assignee_id FROM tasks WHERE user_id = ?",
         (user_id,)
     )
 
