@@ -9,14 +9,20 @@ CREATE TABLE IF NOT EXISTS tasks (
     user_id INTEGER,
     title TEXT,
     status TEXT,
-    assignee_id INTEGER
+    assignee_id INTEGER,
+    deadline TEXT
 )
 """)
 
 conn.commit()
 
 
-def add_task(user_id, title, assignee_id):
+def add_task(
+    user_id,
+    title,
+    assignee_id,
+    deadline
+):
 
     cursor.execute(
         """
@@ -24,15 +30,17 @@ def add_task(user_id, title, assignee_id):
             user_id,
             title,
             status,
-            assignee_id
+            assignee_id,
+            deadline
         )
-        VALUES (?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?)
         """,
         (
             user_id,
             title,
             "🆕",
-            assignee_id
+            assignee_id,
+            deadline
         )
     )
 
@@ -40,7 +48,7 @@ def add_task(user_id, title, assignee_id):
 
 def get_tasks(user_id):
     cursor.execute(
-        "SELECT id, title, status, assignee_id FROM tasks WHERE user_id = ?",
+        "SELECT id, title, status, assignee_id, deadline FROM tasks WHERE user_id = ?",
         (user_id,)
     )
 
