@@ -31,6 +31,7 @@ dp = Dispatcher()
 class CreateTask(StatesGroup):
     waiting_for_title = State()
     waiting_for_assignee = State()
+    waiting_for_deadline = State()
 
 
 # Главное меню
@@ -148,6 +149,7 @@ async def my_tasks(callback: CallbackQuery):
         title = task[1]
         status = task[2]
         assignee_id = task[3]
+        deadline = task[4]
 
         assignee_name = USERS.get(
             assignee_id,
@@ -181,7 +183,9 @@ async def my_tasks(callback: CallbackQuery):
         )
 
         await callback.message.answer(
-          f"{status} {title}\n👤 {assignee_name}",
+          f"{status} {title}\n"
+            f"👤 {assignee_name}\n"
+            f"📅 {deadline}",
             reply_markup=keyboard
         )
 
@@ -247,6 +251,39 @@ async def set_cancel(callback: CallbackQuery):
     CreateTask.waiting_for_assignee,
     F.data.startswith("assign_")
 )
+@dp.callback_query(
+    CreateTask.waiting_for_assignee,
+    F.data.startswith("assign_")
+)
+@dp.message(CreateTask.waiting_for_deadline)
+async def get_deadline(
+    message: Message,
+    state: FSMContext
+):
+
+    data = await state.get_data()
+
+    title = data["title"]
+    assignee_id = data["assignee_id"]
+
+    add_task(
+        message.from_user.id,
+        title,
+        assignee_id,
+        message.text
+    )
+
+    assignee_name = USERS[assignee_id]["name"]
+
+    await message.answer(
+        f"✅ Задача создана\n\n"
+        f"📌 {title}\n"
+        f"👤 {assignee_name}\n"
+        f"📅 {message.text}",
+        reply_markup=main_menu()
+    )
+
+    await state.clear()
 async def assign_task(
     callback: CallbackQuery,
     state: FSMContext
@@ -256,26 +293,18 @@ async def assign_task(
         callback.data.split("_")[1]
     )
 
-    data = await state.get_data()
-
-    title = data["title"]
-
-    add_task(
-        callback.from_user.id,
-        title,
-        assignee_id
+    await state.update_data(
+        assignee_id=assignee_id
     )
-
-    assignee_name = USERS[assignee_id]["name"]
 
     await callback.message.answer(
-        f"✅ Задача создана\n\n"
-        f"📌 {title}\n"
-        f"👤 {assignee_name}",
-        reply_markup=main_menu()
+        "📅 Введите дедлайн\n\n"
+        "Пример: 28.05.2026"
     )
 
-    await state.clear()
+    await state.set_state(
+        CreateTask.waiting_for_deadline
+    )
 
 async def main():
     await dp.start_polling(bot)
