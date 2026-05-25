@@ -218,7 +218,7 @@ def main_menu():
 @dp.message(CommandStart())
 async def start(message: Message):
 
-    await message.answer(
+    reply_markup=main_menu()
         "👋 Task Manager Bot",
         reply_markup=main_menu()
     )
@@ -233,7 +233,7 @@ async def new_task(
     state: FSMContext
 ):
 
-    await callback.message.answer(
+    reply_markup=main_menu()
         "✍️ Введите название задачи"
     )
 
@@ -280,7 +280,7 @@ async def get_title(
         ]
     )
 
-    await message.answer(
+    reply_markup=main_menu()
         "🔥 Выберите приоритет",
         reply_markup=keyboard
     )
@@ -332,7 +332,7 @@ async def get_priority(
             ]
         )
 
-    await callback.message.answer(
+    reply_markup=main_menu()
         "👤 Выберите исполнителя",
         reply_markup=keyboard
     )
@@ -362,7 +362,7 @@ async def assign_task(
         assignee_id=assignee_id
     )
 
-    await callback.message.answer(
+    reply_markup=main_menu()
         "📅 Введите дедлайн\n\n"
         "Пример:\n"
         "28.05.2026 18:30"
@@ -399,7 +399,7 @@ async def get_deadline(
         assignee_id
     ]["name"]
 
-    await message.answer(
+    reply_markup=main_menu()
         f"✅ Задача создана\n\n"
         f"📌 {title}\n"
         f"🔥 {priority}\n"
@@ -428,7 +428,7 @@ async def all_tasks(
 
     if not active_tasks:
 
-        await callback.message.answer(
+        reply_markup=main_menu()
             "📭 Активных задач нет"
         )
 
@@ -500,7 +500,7 @@ async def all_tasks(
         inline_keyboard=keyboard_buttons
     )
 
-    await callback.message.answer(
+    reply_markup=main_menu()
         text,
         reply_markup=keyboard
     )
@@ -523,7 +523,7 @@ async def done_tasks(
 
     if not completed_tasks:
 
-        await callback.message.answer(
+        reply_markup=main_menu()
             "📭 Выполненных задач нет"
         )
 
@@ -553,7 +553,7 @@ async def done_tasks(
             f"📅 {deadline}\n\n"
         )
 
-    await callback.message.answer(text)
+    reply_markup=main_menu()text)
 
 # =====================================
 # CALENDAR
@@ -568,7 +568,7 @@ async def calendar(
 
     if not tasks:
 
-        await callback.message.answer(
+        reply_markup=main_menu()
             "📭 Задач нет"
         )
 
@@ -599,7 +599,7 @@ async def calendar(
 
         text += "\n"
 
-    await callback.message.answer(text)
+    reply_markup=main_menu()text)
 
 # =====================================
 # OVERDUE
@@ -642,13 +642,13 @@ async def overdue_tasks(
 
     if not found:
 
-        await callback.message.answer(
+        reply_markup=main_menu()
             "✅ Просроченных задач нет"
         )
 
         return
 
-    await callback.message.answer(text)
+    reply_markup=main_menu()text)
 
 # =====================================
 # COMMENTS
@@ -670,7 +670,7 @@ async def add_comment(
         task_id=task_id
     )
 
-    await callback.message.answer(
+    reply_markup=main_menu()
         "💬 Введите комментарий"
     )
 
@@ -693,12 +693,16 @@ async def save_comment(
         message.text
     )
 
-    await message.answer(
+    reply_markup=main_menu()
         "✅ Комментарий добавлен",
         reply_markup=main_menu()
     )
 
     await state.clear()
+
+# =====================================
+# STATUS HANDLERS
+# =====================================
 
 # =====================================
 # STATUS HANDLERS
@@ -720,9 +724,13 @@ async def set_work(
         "⚙️"
     )
 
-    await callback.answer(
-        "Задача в работе"
+    reply_markup=main_menu()
+        "✅ Статус изменён: В работе",
+        reply_markup=main_menu()
     )
+
+    await callback.answer()
+
 
 @dp.callback_query(
     F.data.startswith("pause_")
@@ -740,9 +748,13 @@ async def set_pause(
         "⏸"
     )
 
-    await callback.answer(
-        "Задача на паузе"
+    reply_markup=main_menu()
+        "✅ Статус изменён: На паузе",
+        reply_markup=main_menu()
     )
+
+    await callback.answer()
+
 
 @dp.callback_query(
     F.data.startswith("done_")
@@ -760,9 +772,36 @@ async def set_done(
         "✅"
     )
 
-    await callback.answer(
-        "Задача выполнена"
+    reply_markup=main_menu()
+        "✅ Задача выполнена",
+        reply_markup=main_menu()
     )
+
+    await callback.answer()
+
+
+@dp.callback_query(
+    F.data.startswith("cancel_")
+)
+async def set_cancel(
+    callback: CallbackQuery
+):
+
+    task_id = int(
+        callback.data.split("_")[1]
+    )
+
+    update_status(
+        task_id,
+        "❌"
+    )
+
+    reply_markup=main_menu()
+        "❌ Задача отменена",
+        reply_markup=main_menu()
+    )
+
+    await callback.answer()
 
 # =====================================
 # REMINDERS
