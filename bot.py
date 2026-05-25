@@ -94,10 +94,11 @@ async def new_task(callback: CallbackQuery, state: FSMContext):
 # Получение названия задачи
 @dp.message(CreateTask.waiting_for_title)
 async def get_task_title(message: Message, state: FSMContext):
-   add_task(
-    message.from_user.id,
-    message.text
-   )
+
+    add_task(
+        message.from_user.id,
+        message.text
+    )
 
     await message.answer(
         f"✅ Задача создана:\n\n📌 {message.text}",
