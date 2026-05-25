@@ -1,6 +1,7 @@
 import asyncio
 import os
 
+from database import add_task, get_tasks
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import (
@@ -19,9 +20,6 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
-
-# Временное хранилище задач
-tasks = []
 
 
 # FSM
@@ -96,11 +94,10 @@ async def new_task(callback: CallbackQuery, state: FSMContext):
 # Получение названия задачи
 @dp.message(CreateTask.waiting_for_title)
 async def get_task_title(message: Message, state: FSMContext):
-    task = {
-        "title": message.text,
-        "user_id": message.from_user.id
-    }
-
+   add_task(
+    message.from_user.id,
+    message.text
+)
     tasks.append(task)
 
     await message.answer(
@@ -115,10 +112,7 @@ async def get_task_title(message: Message, state: FSMContext):
 @dp.callback_query(F.data == "my_tasks")
 async def my_tasks(callback: CallbackQuery):
 
-    user_tasks = [
-        task for task in tasks
-        if task["user_id"] == callback.from_user.id
-    ]
+    user_tasks = get_tasks(callback.from_user.id)
 
     if not user_tasks:
         await callback.message.answer(
@@ -129,7 +123,7 @@ async def my_tasks(callback: CallbackQuery):
     text = "📋 Ваши задачи:\n\n"
 
     for i, task in enumerate(user_tasks, start=1):
-        text += f"{i}. {task['title']}\n"
+        text += f"{i}. {task[0]}\n"
 
     await callback.message.answer(text)
 
