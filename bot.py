@@ -1,7 +1,11 @@
 import asyncio
 import os
 
-from database import add_task, get_tasks
+from database import (
+    add_task,
+    get_tasks,
+    update_task_status
+)
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import (
@@ -120,13 +124,39 @@ async def my_tasks(callback: CallbackQuery):
         )
         return
 
-    text = "📋 Ваши задачи:\n\n"
+    for task in user_tasks:
 
-    for i, task in enumerate(user_tasks, start=1):
-        text += f"{i}. {task[0]}\n"
+        task_id = task[0]
+        title = task[1]
+        status = task[2]
 
-    await callback.message.answer(text)
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="⚙️",
+                        callback_data=f"work_{task_id}"
+                    ),
+                    InlineKeyboardButton(
+                        text="⏸",
+                        callback_data=f"pause_{task_id}"
+                    ),
+                    InlineKeyboardButton(
+                        text="✅",
+                        callback_data=f"done_{task_id}"
+                    ),
+                    InlineKeyboardButton(
+                        text="❌",
+                        callback_data=f"cancel_{task_id}"
+                    )
+                ]
+            ]
+        )
 
+        await callback.message.answer(
+            f"{status} {title}",
+            reply_markup=keyboard
+        )
 
 # Остальные кнопки
 @dp.callback_query(F.data == "today")
@@ -148,6 +178,44 @@ async def overdue(callback: CallbackQuery):
 async def settings(callback: CallbackQuery):
     await callback.message.answer("⚙️ Настройки")
 
+@dp.callback_query(F.data.startswith("work_"))
+async def set_work(callback: CallbackQuery):
+
+    task_id = int(callback.data.split("_")[1])
+
+    update_task_status(task_id, "⚙️")
+
+    await callback.answer("Задача в работе")
+
+
+@dp.callback_query(F.data.startswith("pause_"))
+async def set_pause(callback: CallbackQuery):
+
+    task_id = int(callback.data.split("_")[1])
+
+    update_task_status(task_id, "⏸")
+
+    await callback.answer("Задача на паузе")
+
+
+@dp.callback_query(F.data.startswith("done_"))
+async def set_done(callback: CallbackQuery):
+
+    task_id = int(callback.data.split("_")[1])
+
+    update_task_status(task_id, "✅")
+
+    await callback.answer("Задача выполнена")
+
+
+@dp.callback_query(F.data.startswith("cancel_"))
+async def set_cancel(callback: CallbackQuery):
+
+    task_id = int(callback.data.split("_")[1])
+
+    update_task_status(task_id, "❌")
+
+    await callback.answer("Задача отменена")
 
 async def main():
     await dp.start_polling(bot)
