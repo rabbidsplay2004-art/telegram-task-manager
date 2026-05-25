@@ -1,6 +1,4 @@
-
 import asyncio
-import csv
 import os
 import sqlite3
 from datetime import datetime
@@ -13,8 +11,7 @@ from aiogram.types import (
     Message,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
-    CallbackQuery,
-    FSInputFile
+    CallbackQuery
 )
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
@@ -31,16 +28,18 @@ dp = Dispatcher()
 # =====================================
 
 USERS = {
-    807467627: {
-        "name": "Никита",
+    111111111: {
+        "name": "Админ",
         "role": "admin"
     },
-    966721440: {
-        "name": "Таня",
+
+    222222222: {
+        "name": "Иван",
         "role": "user"
     },
-    290304196: {
-        "name": "Макс Либо",
+
+    333333333: {
+        "name": "Мария",
         "role": "user"
     }
 }
@@ -49,7 +48,10 @@ USERS = {
 # DATABASE
 # =====================================
 
-conn = sqlite3.connect("tasks.db")
+conn = sqlite3.connect(
+    "tasks.db"
+)
+
 cursor = conn.cursor()
 
 cursor.execute("""
@@ -66,13 +68,17 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 conn.commit()
 
-
 # =====================================
 # DB FUNCTIONS
 # =====================================
 
+def add_task(
+    title,
+    priority,
+    assignee_id,
+    deadline
+):
 
-def add_task(title, priority, assignee_id, deadline):
     cursor.execute(
         """
         INSERT INTO tasks (
@@ -98,51 +104,57 @@ def add_task(title, priority, assignee_id, deadline):
     conn.commit()
 
 
-
 def get_tasks():
+
     cursor.execute(
         """
         SELECT * FROM tasks
-        ORDER BY id DESC
+        ORDER BY deadline ASC
         """
     )
 
     return cursor.fetchall()
 
 
-
 def update_status(task_id, status):
+
     cursor.execute(
         """
         UPDATE tasks
         SET status = ?
         WHERE id = ?
         """,
-        (status, task_id)
+        (
+            status,
+            task_id
+        )
     )
 
     conn.commit()
 
 
-
 def update_comment(task_id, comment):
+
     cursor.execute(
         """
         UPDATE tasks
         SET comment = ?
         WHERE id = ?
         """,
-        (comment, task_id)
+        (
+            comment,
+            task_id
+        )
     )
 
     conn.commit()
-
 
 # =====================================
 # FSM
 # =====================================
 
 class CreateTask(StatesGroup):
+
     waiting_for_title = State()
     waiting_for_priority = State()
     waiting_for_assignee = State()
@@ -150,50 +162,54 @@ class CreateTask(StatesGroup):
 
 
 class AddComment(StatesGroup):
-    waiting_for_comment = State()
 
+    waiting_for_comment = State()
 
 # =====================================
 # MENU
 # =====================================
 
-
 def main_menu():
+
     return InlineKeyboardMarkup(
         inline_keyboard=[
+
             [
                 InlineKeyboardButton(
-                    text="📋 Все задачи",
+                    text="📋 Активные задачи",
                     callback_data="all_tasks"
                 )
             ],
+
             [
                 InlineKeyboardButton(
-                    text="📅 Сегодня",
-                    callback_data="today"
+                    text="✅ Выполненные",
+                    callback_data="done_tasks"
                 )
             ],
+
+            [
+                InlineKeyboardButton(
+                    text="📅 Календарь",
+                    callback_data="calendar"
+                )
+            ],
+
             [
                 InlineKeyboardButton(
                     text="⚠️ Просроченные",
                     callback_data="overdue"
                 )
             ],
+
             [
                 InlineKeyboardButton(
                     text="➕ Новая задача",
                     callback_data="new_task"
                 )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="📁 Экспорт CSV",
-                    callback_data="export"
-                )
             ]
         ]
     )
-
 
 # =====================================
 # START
@@ -207,13 +223,15 @@ async def start(message: Message):
         reply_markup=main_menu()
     )
 
-
 # =====================================
 # CREATE TASK
 # =====================================
 
 @dp.callback_query(F.data == "new_task")
-async def new_task(callback: CallbackQuery, state: FSMContext):
+async def new_task(
+    callback: CallbackQuery,
+    state: FSMContext
+):
 
     await callback.message.answer(
         "✍️ Введите название задачи"
@@ -223,9 +241,15 @@ async def new_task(callback: CallbackQuery, state: FSMContext):
         CreateTask.waiting_for_title
     )
 
+# =====================================
+# TITLE
+# =====================================
 
 @dp.message(CreateTask.waiting_for_title)
-async def get_title(message: Message, state: FSMContext):
+async def get_title(
+    message: Message,
+    state: FSMContext
+):
 
     await state.update_data(
         title=message.text
@@ -239,12 +263,14 @@ async def get_title(message: Message, state: FSMContext):
                     callback_data="priority_high"
                 )
             ],
+
             [
                 InlineKeyboardButton(
                     text="🟡 Средний",
                     callback_data="priority_medium"
                 )
             ],
+
             [
                 InlineKeyboardButton(
                     text="🟢 Низкий",
@@ -263,20 +289,29 @@ async def get_title(message: Message, state: FSMContext):
         CreateTask.waiting_for_priority
     )
 
+# =====================================
+# PRIORITY
+# =====================================
 
 @dp.callback_query(
     CreateTask.waiting_for_priority,
     F.data.startswith("priority_")
 )
-async def get_priority(callback: CallbackQuery, state: FSMContext):
+async def get_priority(
+    callback: CallbackQuery,
+    state: FSMContext
+):
 
     priority_map = {
+
         "priority_high": "🔴 Высокий",
         "priority_medium": "🟡 Средний",
         "priority_low": "🟢 Низкий"
     }
 
-    priority = priority_map[callback.data]
+    priority = priority_map[
+        callback.data
+    ]
 
     await state.update_data(
         priority=priority
@@ -287,6 +322,7 @@ async def get_priority(callback: CallbackQuery, state: FSMContext):
     )
 
     for user_id, user_data in USERS.items():
+
         keyboard.inline_keyboard.append(
             [
                 InlineKeyboardButton(
@@ -305,12 +341,18 @@ async def get_priority(callback: CallbackQuery, state: FSMContext):
         CreateTask.waiting_for_assignee
     )
 
+# =====================================
+# ASSIGNEE
+# =====================================
 
 @dp.callback_query(
     CreateTask.waiting_for_assignee,
     F.data.startswith("assign_")
 )
-async def assign_task(callback: CallbackQuery, state: FSMContext):
+async def assign_task(
+    callback: CallbackQuery,
+    state: FSMContext
+):
 
     assignee_id = int(
         callback.data.split("_")[1]
@@ -321,16 +363,24 @@ async def assign_task(callback: CallbackQuery, state: FSMContext):
     )
 
     await callback.message.answer(
-        "📅 Введите дедлайн\n\nПример: 28.05.2026"
+        "📅 Введите дедлайн\n\n"
+        "Пример:\n"
+        "28.05.2026 18:30"
     )
 
     await state.set_state(
         CreateTask.waiting_for_deadline
     )
 
+# =====================================
+# DEADLINE
+# =====================================
 
 @dp.message(CreateTask.waiting_for_deadline)
-async def get_deadline(message: Message, state: FSMContext):
+async def get_deadline(
+    message: Message,
+    state: FSMContext
+):
 
     data = await state.get_data()
 
@@ -345,7 +395,9 @@ async def get_deadline(message: Message, state: FSMContext):
         message.text
     )
 
-    assignee_name = USERS[assignee_id]["name"]
+    assignee_name = USERS[
+        assignee_id
+    ]["name"]
 
     await message.answer(
         f"✅ Задача создана\n\n"
@@ -358,23 +410,33 @@ async def get_deadline(message: Message, state: FSMContext):
 
     await state.clear()
 
-
 # =====================================
-# ALL TASKS
+# ACTIVE TASKS
 # =====================================
 
 @dp.callback_query(F.data == "all_tasks")
-async def all_tasks(callback: CallbackQuery):
+async def all_tasks(
+    callback: CallbackQuery
+):
 
     tasks = get_tasks()
 
-    if not tasks:
+    active_tasks = [
+        task for task in tasks
+        if task[2] != "✅"
+    ]
+
+    if not active_tasks:
+
         await callback.message.answer(
-            "📭 Задач пока нет"
+            "📭 Активных задач нет"
         )
+
         return
 
-    for task in tasks:
+    text = "📋 АКТИВНЫЕ ЗАДАЧИ\n\n"
+
+    for task in active_tasks:
 
         task_id = task[0]
         title = task[1]
@@ -392,57 +454,213 @@ async def all_tasks(callback: CallbackQuery):
             "Unknown"
         )
 
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text="⚙️",
-                        callback_data=f"work_{task_id}"
-                    ),
-                    InlineKeyboardButton(
-                        text="⏸",
-                        callback_data=f"pause_{task_id}"
-                    ),
-                    InlineKeyboardButton(
-                        text="✅",
-                        callback_data=f"done_{task_id}"
-                    ),
-                    InlineKeyboardButton(
-                        text="❌",
-                        callback_data=f"cancel_{task_id}"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        text="💬 Комментарий",
-                        callback_data=f"comment_{task_id}"
-                    )
-                ]
-            ]
-        )
-
-        text = (
-            f"{status} {title}\n"
+        text += (
+            f"#{task_id} {status} {title}\n"
             f"🔥 {priority}\n"
             f"👤 {assignee_name}\n"
-            f"📅 {deadline}"
+            f"📅 {deadline}\n"
         )
 
         if comment:
-            text += f"\n💬 {comment}"
+            text += f"💬 {comment}\n"
+
+        text += "\n"
+
+    keyboard_buttons = []
+
+    for task in active_tasks:
+
+        task_id = task[0]
+
+        keyboard_buttons.append([
+            InlineKeyboardButton(
+                text=f"⚙️ #{task_id}",
+                callback_data=f"work_{task_id}"
+            ),
+
+            InlineKeyboardButton(
+                text=f"⏸ #{task_id}",
+                callback_data=f"pause_{task_id}"
+            ),
+
+            InlineKeyboardButton(
+                text=f"✅ #{task_id}",
+                callback_data=f"done_{task_id}"
+            )
+        ])
+
+        keyboard_buttons.append([
+            InlineKeyboardButton(
+                text=f"💬 Комментарий #{task_id}",
+                callback_data=f"comment_{task_id}"
+            )
+        ])
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=keyboard_buttons
+    )
+
+    await callback.message.answer(
+        text,
+        reply_markup=keyboard
+    )
+
+# =====================================
+# DONE TASKS
+# =====================================
+
+@dp.callback_query(F.data == "done_tasks")
+async def done_tasks(
+    callback: CallbackQuery
+):
+
+    tasks = get_tasks()
+
+    completed_tasks = [
+        task for task in tasks
+        if task[2] == "✅"
+    ]
+
+    if not completed_tasks:
 
         await callback.message.answer(
-            text,
-            reply_markup=keyboard
+            "📭 Выполненных задач нет"
         )
 
+        return
+
+    text = "✅ ВЫПОЛНЕННЫЕ ЗАДАЧИ\n\n"
+
+    for task in completed_tasks:
+
+        title = task[1]
+        priority = task[3]
+        assignee_id = task[4]
+        deadline = task[5]
+
+        assignee_name = USERS.get(
+            assignee_id,
+            {}
+        ).get(
+            "name",
+            "Unknown"
+        )
+
+        text += (
+            f"✅ {title}\n"
+            f"🔥 {priority}\n"
+            f"👤 {assignee_name}\n"
+            f"📅 {deadline}\n\n"
+        )
+
+    await callback.message.answer(text)
+
+# =====================================
+# CALENDAR
+# =====================================
+
+@dp.callback_query(F.data == "calendar")
+async def calendar(
+    callback: CallbackQuery
+):
+
+    tasks = get_tasks()
+
+    if not tasks:
+
+        await callback.message.answer(
+            "📭 Задач нет"
+        )
+
+        return
+
+    text = "📅 КАЛЕНДАРЬ ЗАДАЧ\n\n"
+
+    grouped = {}
+
+    for task in tasks:
+
+        deadline = task[5]
+
+        if deadline not in grouped:
+            grouped[deadline] = []
+
+        grouped[deadline].append(task)
+
+    for deadline, items in grouped.items():
+
+        text += f"📅 {deadline}\n"
+
+        for task in items:
+
+            text += (
+                f"• {task[2]} {task[1]}\n"
+            )
+
+        text += "\n"
+
+    await callback.message.answer(text)
+
+# =====================================
+# OVERDUE
+# =====================================
+
+@dp.callback_query(F.data == "overdue")
+async def overdue_tasks(
+    callback: CallbackQuery
+):
+
+    tasks = get_tasks()
+
+    text = "⚠️ ПРОСРОЧЕННЫЕ\n\n"
+
+    found = False
+
+    for task in tasks:
+
+        try:
+
+            deadline = datetime.strptime(
+                task[5],
+                "%d.%m.%Y %H:%M"
+            )
+
+            if (
+                deadline < datetime.now()
+                and task[2] != "✅"
+            ):
+
+                found = True
+
+                text += (
+                    f"{task[2]} {task[1]}\n"
+                    f"📅 {task[5]}\n\n"
+                )
+
+        except:
+            pass
+
+    if not found:
+
+        await callback.message.answer(
+            "✅ Просроченных задач нет"
+        )
+
+        return
+
+    await callback.message.answer(text)
 
 # =====================================
 # COMMENTS
 # =====================================
 
-@dp.callback_query(F.data.startswith("comment_"))
-async def add_comment(callback: CallbackQuery, state: FSMContext):
+@dp.callback_query(
+    F.data.startswith("comment_")
+)
+async def add_comment(
+    callback: CallbackQuery,
+    state: FSMContext
+):
 
     task_id = int(
         callback.data.split("_")[1]
@@ -460,9 +678,11 @@ async def add_comment(callback: CallbackQuery, state: FSMContext):
         AddComment.waiting_for_comment
     )
 
-
 @dp.message(AddComment.waiting_for_comment)
-async def save_comment(message: Message, state: FSMContext):
+async def save_comment(
+    message: Message,
+    state: FSMContext
+):
 
     data = await state.get_data()
 
@@ -480,181 +700,69 @@ async def save_comment(message: Message, state: FSMContext):
 
     await state.clear()
 
-
-# =====================================
-# TODAY
-# =====================================
-
-@dp.callback_query(F.data == "today")
-async def today_tasks(callback: CallbackQuery):
-
-    today = datetime.now().strftime("%d.%m.%Y")
-
-    tasks = get_tasks()
-
-    found = False
-
-    for task in tasks:
-
-        if task[5] == today:
-
-            found = True
-
-            await callback.message.answer(
-                f"{task[2]} {task[1]}\n📅 {task[5]}"
-            )
-
-    if not found:
-        await callback.message.answer(
-            "📭 На сегодня задач нет"
-        )
-
-
-# =====================================
-# OVERDUE
-# =====================================
-
-@dp.callback_query(F.data == "overdue")
-async def overdue_tasks(callback: CallbackQuery):
-
-    today = datetime.now()
-
-    tasks = get_tasks()
-
-    found = False
-
-    for task in tasks:
-
-        try:
-            deadline = datetime.strptime(
-                task[5],
-                "%d.%m.%Y"
-            )
-
-            if deadline < today and task[2] != "✅":
-
-                found = True
-
-                await callback.message.answer(
-                    f"⚠️ {task[1]}\n📅 {task[5]}"
-                )
-
-        except:
-            pass
-
-    if not found:
-        await callback.message.answer(
-            "✅ Просроченных задач нет"
-        )
-
-
-# =====================================
-# EXPORT
-# =====================================
-
-@dp.callback_query(F.data == "export")
-async def export_tasks(callback: CallbackQuery):
-
-    tasks = get_tasks()
-
-    with open("tasks_export.csv", "w", newline="", encoding="utf-8") as file:
-
-        writer = csv.writer(file)
-
-        writer.writerow([
-            "ID",
-            "Название",
-            "Статус",
-            "Приоритет",
-            "Исполнитель",
-            "Дедлайн",
-            "Комментарий"
-        ])
-
-        for task in tasks:
-
-            assignee_name = USERS.get(
-                task[4],
-                {}
-            ).get(
-                "name",
-                "Unknown"
-            )
-
-            writer.writerow([
-                task[0],
-                task[1],
-                task[2],
-                task[3],
-                assignee_name,
-                task[5],
-                task[6]
-            ])
-
-    document = FSInputFile("tasks_export.csv")
-
-    await callback.message.answer_document(document)
-
-
 # =====================================
 # STATUS HANDLERS
 # =====================================
 
-@dp.callback_query(F.data.startswith("work_"))
-async def set_work(callback: CallbackQuery):
+@dp.callback_query(
+    F.data.startswith("work_")
+)
+async def set_work(
+    callback: CallbackQuery
+):
 
     task_id = int(
         callback.data.split("_")[1]
     )
 
-    update_status(task_id, "⚙️")
+    update_status(
+        task_id,
+        "⚙️"
+    )
 
     await callback.answer(
         "Задача в работе"
     )
 
-
-@dp.callback_query(F.data.startswith("pause_"))
-async def set_pause(callback: CallbackQuery):
+@dp.callback_query(
+    F.data.startswith("pause_")
+)
+async def set_pause(
+    callback: CallbackQuery
+):
 
     task_id = int(
         callback.data.split("_")[1]
     )
 
-    update_status(task_id, "⏸")
+    update_status(
+        task_id,
+        "⏸"
+    )
 
     await callback.answer(
         "Задача на паузе"
     )
 
-
-@dp.callback_query(F.data.startswith("done_"))
-async def set_done(callback: CallbackQuery):
+@dp.callback_query(
+    F.data.startswith("done_")
+)
+async def set_done(
+    callback: CallbackQuery
+):
 
     task_id = int(
         callback.data.split("_")[1]
     )
 
-    update_status(task_id, "✅")
+    update_status(
+        task_id,
+        "✅"
+    )
 
     await callback.answer(
         "Задача выполнена"
     )
-
-
-@dp.callback_query(F.data.startswith("cancel_"))
-async def set_cancel(callback: CallbackQuery):
-
-    task_id = int(
-        callback.data.split("_")[1]
-    )
-
-    update_status(task_id, "❌")
-
-    await callback.answer(
-        "Задача отменена"
-    )
-
 
 # =====================================
 # REMINDERS
@@ -664,35 +772,49 @@ async def check_deadlines():
 
     tasks = get_tasks()
 
-    today = datetime.now()
+    now = datetime.now()
 
     for task in tasks:
 
         try:
+
             deadline = datetime.strptime(
                 task[5],
-                "%d.%m.%Y"
+                "%d.%m.%Y %H:%M"
             )
 
-            delta = (deadline - today).days
+            delta = deadline - now
 
-            if delta == 1:
+            hours_left = delta.total_seconds() / 3600
 
-                assignee_id = task[4]
+            if 23 <= hours_left <= 24:
 
                 await bot.send_message(
-                    assignee_id,
+                    task[4],
                     f"⏰ Напоминание\n\n"
-                    f"До дедлайна задачи '{task[1]}' остался 1 день"
+                    f"До дедлайна задачи "
+                    f"'{task[1]}' остались сутки"
+                )
+
+            if 2 <= hours_left <= 3:
+
+                await bot.send_message(
+                    task[4],
+                    f"⏰ Срочное напоминание\n\n"
+                    f"До дедлайна задачи "
+                    f"'{task[1]}' осталось 3 часа"
                 )
 
         except:
             pass
 
-
 scheduler = AsyncIOScheduler()
-scheduler.add_job(check_deadlines, "interval", hours=6)
 
+scheduler.add_job(
+    check_deadlines,
+    "interval",
+    minutes=30
+)
 
 # =====================================
 # MAIN
@@ -704,7 +826,6 @@ async def main():
 
     await dp.start_polling(bot)
 
-
 if __name__ == "__main__":
-    asyncio.run(main())
 
+    asyncio.run(main())
