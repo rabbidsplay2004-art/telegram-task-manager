@@ -97,8 +97,7 @@ async def get_task_title(message: Message, state: FSMContext):
    add_task(
     message.from_user.id,
     message.text
-)
-    tasks.append(task)
+   )
 
     await message.answer(
         f"✅ Задача создана:\n\n📌 {message.text}",
