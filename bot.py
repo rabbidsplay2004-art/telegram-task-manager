@@ -28,18 +28,18 @@ dp = Dispatcher()
 # =====================================
 
 USERS = {
-    111111111: {
-        "name": "Админ",
+    807467627: {
+        "name": "паньк",
         "role": "admin"
     },
 
-    222222222: {
-        "name": "Иван",
+    966721440: {
+        "name": "татьянус",
         "role": "user"
     },
 
-    333333333: {
-        "name": "Мария",
+    290304196: {
+        "name": "максон либовский",
         "role": "user"
     }
 }
@@ -218,8 +218,8 @@ def main_menu():
 @dp.message(CommandStart())
 async def start(message: Message):
 
-    reply_markup=main_menu()
-        "👋 Task Manager Bot",
+    await message.answer(
+        "ну привет чертила",
         reply_markup=main_menu()
     )
 
