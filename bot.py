@@ -6,6 +6,7 @@ from database import (
     get_tasks,
     update_task_status
 )
+from users import USERS
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import (
@@ -29,6 +30,7 @@ dp = Dispatcher()
 # FSM
 class CreateTask(StatesGroup):
     waiting_for_title = State()
+    waiting_for_assignee = State()
 
 
 # Главное меню
@@ -99,17 +101,33 @@ async def new_task(callback: CallbackQuery, state: FSMContext):
 @dp.message(CreateTask.waiting_for_title)
 async def get_task_title(message: Message, state: FSMContext):
 
-    add_task(
-        message.from_user.id,
-        message.text
+    await state.update_data(
+        title=message.text
     )
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[]
+    )
+
+    for user_id, user_data in USERS.items():
+
+        keyboard.inline_keyboard.append(
+            [
+                InlineKeyboardButton(
+                    text=user_data["name"],
+                    callback_data=f"assign_{user_id}"
+                )
+            ]
+        )
 
     await message.answer(
-        f"✅ Задача создана:\n\n📌 {message.text}",
-        reply_markup=main_menu()
+        "👤 Выберите исполнителя",
+        reply_markup=keyboard
     )
 
-    await state.clear()
+    await state.set_state(
+        CreateTask.waiting_for_assignee
+    )
 
 
 # Мои задачи
@@ -129,6 +147,15 @@ async def my_tasks(callback: CallbackQuery):
         task_id = task[0]
         title = task[1]
         status = task[2]
+        assignee_id = task[3]
+
+        assignee_name = USERS.get(
+            assignee_id,
+            {}
+    ).get(
+        "name",
+        "Неизвестно"
+    )
 
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
@@ -154,7 +181,7 @@ async def my_tasks(callback: CallbackQuery):
         )
 
         await callback.message.answer(
-            f"{status} {title}",
+          f"{status} {title}\n👤 {assignee_name}",
             reply_markup=keyboard
         )
 
@@ -216,6 +243,39 @@ async def set_cancel(callback: CallbackQuery):
     update_task_status(task_id, "❌")
 
     await callback.answer("Задача отменена")
+@dp.callback_query(
+    CreateTask.waiting_for_assignee,
+    F.data.startswith("assign_")
+)
+async def assign_task(
+    callback: CallbackQuery,
+    state: FSMContext
+):
+
+    assignee_id = int(
+        callback.data.split("_")[1]
+    )
+
+    data = await state.get_data()
+
+    title = data["title"]
+
+    add_task(
+        callback.from_user.id,
+        title,
+        assignee_id
+    )
+
+    assignee_name = USERS[assignee_id]["name"]
+
+    await callback.message.answer(
+        f"✅ Задача создана\n\n"
+        f"📌 {title}\n"
+        f"👤 {assignee_name}",
+        reply_markup=main_menu()
+    )
+
+    await state.clear()
 
 async def main():
     await dp.start_polling(bot)
